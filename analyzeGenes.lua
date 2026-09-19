@@ -40,7 +40,11 @@ local original_genes = {}
 local function getOriginalGenes(stack, species, species2)
     species2 = species2 or species
     database.set(1, stack.name, 0, '{IsAnalyzed:1b,Genome:{Chromosomes:[0:{Slot:0b,UID0:"'..species..'",UID1:"'..species2..'"}]}}')
-    local individual  = database.get(1)--[[@as table]].individual
+    local analyzed = database.get(1)
+    if not analyzed or not analyzed.individual then
+        error("数据库无法解析蜜蜂NBT："..tostring(species))
+    end
+    local individual = analyzed.individual
     local lifespanList = { [10]=1, [20]=2, [30]=3, [35]=4, [40]=5, [45]=6, [50]=7, [60]=8, [70]=9, [600]=10 }
     return {
         name = stack.name,
@@ -49,8 +53,8 @@ local function getOriginalGenes(stack, species, species2)
         label = stack.label,
         size = stack.size,--数量
         maxSize = stack.maxSize,--最大堆叠数
-        isNatural = stack.individual.isNatural,--是否为始祖种
-        generation = stack.individual.generation or 0,--第几代
+        isNatural = stack.individual and stack.individual.isNatural,--是否为始祖种
+        generation = (stack.individual and stack.individual.generation) or 0,--第几代
         species = { individual.active.species.uid, individual.inactive.species.uid },--种族
         lifespan = { lifespanList[individual.active.lifespan], lifespanList[individual.inactive.lifespan] },--寿命
         speed = { math.floor((individual.active.speed / 0.23)), math.floor((individual.inactive.speed / 0.23)) },--工作速度
@@ -82,21 +86,24 @@ local function analyzeBee(stack)--返回值只有部分基因能正确表示显�
             if next(genes) then
                 error("蜜蜂NBT数据格式错误")
             end
-            return getOriginalGenes(stack.name, t.value.UID0.value, t.value.UID1.value)
+            return getOriginalGenes(stack, t.value.UID0.value, t.value.UID1.value)
         end
         genes[t.value.Slot.value] = { t.value.UID0.value, t.value.UID1.value }
     end
     --如果original_genes无种族对应的温度与湿度信息，则在数据库中创建一个分析过的雄蜂，并记录其信息
-    if not original_genes[genes[0][1]] then
-        database.set(1, "Forestry:beeDroneGE", 0, '{IsAnalyzed:1b,Genome:{Chromosomes:[0:{Slot:0b,UID0:"'..genes[0][1]..'",UID1:"'..genes[0][1]..'"}]}}')
-        original_genes[genes[0][1]] = (database.get(1)--[[@as any]]).individual.active.species
-    end
-    if not original_genes[genes[0][2]] then
-        database.set(1, "Forestry:beeDroneGE", 0, '{IsAnalyzed:1b,Genome:{Chromosomes:[0:{Slot:0b,UID0:"'..genes[0][2]..'",UID1:"'..genes[0][2]..'"}]}}')
-        original_genes[genes[0][2]] = (database.get(1)--[[@as any]]).individual.active.species
+    for _, speciesUid in pairs(genes[0]) do
+        if not original_genes[speciesUid] then
+            database.set(1, "Forestry:beeDroneGE", 0, '{IsAnalyzed:1b,Genome:{Chromosomes:[0:{Slot:0b,UID0:"'..speciesUid..'",UID1:"'..speciesUid..'"}]}}')
+            local sample = database.get(1)
+            if not sample or not sample.individual then
+                error("数据库无法解析蜂种："..tostring(speciesUid))
+            end
+            original_genes[speciesUid] = sample.individual.active.species
+        end
     end
     --检查显性种族基因与适应性基因
-    if stack.individual.ident and genes[0][1] ~= stack.individual.ident then
+    --ME网络返回的物品描述缺少 individual 字段（OC 的 AE 转换器不经过 Forestry 转换管线），此时跳过显性校验
+    if stack.individual and stack.individual.ident and genes[0][1] ~= stack.individual.ident then
         genes[0] = { genes[0][2], genes[0][1] }
     end
     if not toleranceDominance[genes[4][1]] and toleranceDominance[genes[4][2]] then
@@ -115,8 +122,8 @@ local function analyzeBee(stack)--返回值只有部分基因能正确表示显�
         label = stack.label,
         size = stack.size,--数量
         maxSize = stack.maxSize,--最大堆叠数
-        isNatural = stack.individual.isNatural,--是否为始祖种
-        generation = stack.individual.generation or 0,--第几代
+        isNatural = stack.individual and stack.individual.isNatural or false,--是否为始祖种
+        generation = (stack.individual and stack.individual.generation) or 0,--第几代
         species = genes[0],--种族
         lifespan = { lifespanLevel[genes[2][1]], lifespanLevel[genes[2][2]] },--寿命
         speed = { speedLevel[genes[1][1]], speedLevel[genes[1][2]] },--工作速度

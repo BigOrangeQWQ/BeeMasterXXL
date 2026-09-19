@@ -257,7 +257,7 @@ function M.checkItem(filter, request)
             local speciesGenes = analyzeGenes({name=filter.name,tag=filter.tag,individual={}}).species
             database.set(1, filter.name, 0, '{IsAnalyzed:1b,Genome:{Chromosomes:[0:{Slot:0b,UID0:"'..speciesGenes[1]..'",UID1:"'..speciesGenes[2]..'"}]}}')
             local label = database.get(1).label
-            return M.checkItemByTag({tag=filter.tag,label=label}, request)
+            return M.checkItemByTag({name=filter.name,tag=filter.tag,label=label}, request)
         else
             error("错误的调用bot.checkItem()：不支持tag查询的物品")
         end
@@ -328,7 +328,7 @@ function M.checkItem(filter, request)
     return nil
 end
 function M.checkItemByTag(filter, request)
-    if not filter or not filter.tag or not filter.label then
+    if not filter or not filter.name or not filter.tag or not filter.label then
         error("错误的调用bot.checkItemByTag()")
     end
     if request then
@@ -338,7 +338,7 @@ function M.checkItemByTag(filter, request)
     end
     local slotList, count = {}, 0
     for slot, item in pairs(M.inventory) do
-        if slot ~= 0 and item.label == filter.label and item.tag == filter.tag then
+        if slot ~= 0 and item.name == filter.name and item.tag == filter.tag then
             table.insert(slotList, slot)
             count = count + robot.count(slot)
         end
@@ -365,7 +365,7 @@ function M.checkItemByTag(filter, request)
     local stackList = upgrade_me.getItemsInNetwork({label=filter.label})
     local dbIdx
     for i = 1, math.min(#stackList, 81) do
-        if stackList[i].tag == filter.tag then
+        if stackList[i].name == filter.name and stackList[i].tag == filter.tag then
             dbIdx = i
             break
         end
@@ -386,7 +386,7 @@ function M.checkItemByTag(filter, request)
     end
     upgrade_me.store({label=filter.label}, database.address, 1)
     local stack = database.get(dbIdx)
-    if stack and stack.tag == filter.tag then
+    if stack and stack.name == filter.name and stack.tag == filter.tag then
         upgrade_me.requestItems(database.address, dbIdx, request - count)
         if M.inventory[targetSlot] then
             return targetSlot

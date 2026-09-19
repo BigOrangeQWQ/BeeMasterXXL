@@ -122,6 +122,8 @@ function M.mutate(princessSlot, droneSlot, targetSpecies, mutation)--单步突�
         while true do
             targetBeeSlots = {}
             allele11, allele12, allele22 = {}, {}, {}
+            --每一代都要重新读取当前公主蜂的种族基因（此前 p1/p2 未定义，导致未突变成功时总是误判为基因丢失）
+            local p1, p2 = bot.inventory[princessSlot].species[1], bot.inventory[princessSlot].species[2]
             for _,slot in pairs(bot.getItemsWithLabel(bot.inventoryLabel)) do
                 if bot.inventory[slot].type == "beeDrone" then
                     local d1, d2 = bot.inventory[slot].species[1], bot.inventory[slot].species[2]

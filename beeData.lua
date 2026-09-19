@@ -11,6 +11,27 @@ local doUntil = require("doUntil")
 local database = component.database
 local upgrade_me = component.upgrade_me--[[@as table]]
 
+--ME网络返回的物品描述缺少 individual 字段，需要借助数据库补全。
+--注意：OC 的 store/getItemsInNetwork 过滤器无法匹配二进制 tag，只能按 label 整体存入数据库，再在 Lua 侧按 tag 精确匹配。
+local function getFullStacksByLabel(label)
+    local i = 1
+    while database.clear(i) do
+        i = i + 1
+    end
+    upgrade_me.store({label = label}, database.address, 1)
+    local result = {}
+    for slot = 1, 81 do
+        local full = database.get(slot)
+        if not full then
+            break
+        end
+        if full.tag then
+            result[full.tag] = full
+        end
+    end
+    return result
+end
+
 local chromosomeList = {"species", "speed", "lifespan", "fertility", "flowering", "flowerProvider", "territory", "effect", "temperatureTolerance", "humidityTolerance", "nocturnal", "tolerantFlyer", "caveDwelling"}
 
 local data
@@ -147,22 +168,21 @@ function M.getDroneTag(species)
     database.set(1, "Forestry:beeDroneGE", 0, '{IsAnalyzed:1b,Genome:{Chromosomes:[0:{Slot:0b,UID0:"'..species..'",UID1:"'..species..'"}]}}')
     local droneList = upgrade_me.getItemsInNetwork({label = database.get(1).label})
     for slot, stack in pairs(bot.inventory) do
-        if stack and stack.name == "Forestry:beeDroneGE" and stack.species[1] == species and stack.species[2] == species then
+        if stack and stack.name == "Forestry:beeDroneGE" and stack.species and stack.species[1] == species and stack.species[2] == species then
             table.insert(droneList, component.inventory_controller.getStackInInternalSlot(slot))
         end
     end
-    if #droneList < 2 then
-        return droneList[1] and droneList[1].tag
+    if #droneList == 0 then
+        return nil
     end
     local scoreList = {}
+    local fullStacks
     for i, drone in pairs(droneList) do
         local score = 0
-        -- ME网络返回的物品可能缺少 individual 字段，通过database补全
+        -- ME网络返回的物品缺少 individual 字段，通过数据库按 label 补全
         if not drone.individual then
-            database.clear(1)
-            upgrade_me.store({name="Forestry:beeDroneGE", tag=drone.tag}, database.address, 1)
-            local full = database.get(1)
-            if full then drone = full end
+            fullStacks = fullStacks or getFullStacksByLabel(drone.label)
+            drone = fullStacks[drone.tag] or drone
         end
         local droneGenes = analyzeGenes(drone)
         local templateGenes = {
@@ -196,13 +216,13 @@ function M.getDroneTag(species)
             scoreList[i] = score
         end
     end
-    local bestIndex = 1
+    local bestIndex
     for i, score in pairs(scoreList) do
-        if score > scoreList[bestIndex] then
+        if not bestIndex or score > scoreList[bestIndex] then
             bestIndex = i
         end
     end 
-    return droneList[bestIndex] and droneList[bestIndex].tag
+    return bestIndex and droneList[bestIndex].tag
 end
 
 local function isPrincessAvailable(tag)
@@ -216,14 +236,12 @@ function M.getPrincessTag(isNatural)
     if isNatural and data.usingPrincessTag and bot.checkItem({name="Forestry:beePrincessGE",tag=data.usingPrincessTag}) then
         return data.usingPrincessTag
     end
-    -- 安全获取公主蜂的 isNatural（ME网络返回的物品可能缺少 individual 字段）
+    -- 安全获取公主蜂的 isNatural（ME网络返回的物品缺少 individual 字段，通过数据库按 label 补全）
     local function getPrincessIsNatural(p)
         if p.individual then
             return p.individual.isNatural
         end
-        database.clear(1)
-        upgrade_me.store({name="Forestry:beePrincessGE", tag=p.tag}, database.address, 1)
-        local full = database.get(1)
+        local full = (p.label and p.tag) and getFullStacksByLabel(p.label)[p.tag] or nil
         if full and full.individual then
             return full.individual.isNatural
         end
