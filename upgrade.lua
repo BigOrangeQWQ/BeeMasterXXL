@@ -1,6 +1,14 @@
 -- BeeMasterXXL 在线升级：除 config.lua 外全部覆盖更新，data.txt 不受影响
-local branch = "beta2" -- 2.9.0-beta1 改为 "beta1"，2.9.0-beta2 改为 "beta2"
-local base = "https://raw.githubusercontent.com/BigOrangeQWQ/BeeMasterXXL/" .. branch .. "/"
+local repo = "https://raw.githubusercontent.com/BigOrangeQWQ/BeeMasterXXL/"
+local branch = "beta2" -- 默认分支；2.9.0-beta1/beta2 对应 "beta1"/"beta2"，也可填 tag
+io.write("仓库地址（回车默认 " .. repo .. "）：")
+local r = io.read()
+if r and r ~= "" then repo = r end
+if repo:sub(-1) ~= "/" then repo = repo .. "/" end
+io.write("分支/标签（回车默认 " .. branch .. "）：")
+local b = io.read()
+if b and b ~= "" then branch = b end
+local base = repo .. branch .. "/"
 local files = {
   "strategy.lua", "bee.lua", "analyzeGenes.lua", "beeData.lua", "bot.lua",
   "doUntil.lua", "environment.lua", "tools.lua", "biomes.lua", "mutations.lua",
