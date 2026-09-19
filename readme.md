@@ -36,6 +36,6 @@ wget https://raw.githubusercontent.com/BigOrangeQWQ/BeeMasterXXL/beta1/upgrade.l
 upgrade
 ```
 
-以后每次更新只需在终端运行 `upgrade` 即可。脚本会覆盖除 `config.lua` 外的所有脚本，`config.lua` 和基因数据 `data.txt` 不受影响。升级完成后重新运行 `bee.lua`。
+以后每次更新只需在终端运行 `upgrade` 即可。运行时会询问仓库地址和分支/标签，回车使用默认值；将来仓库迁移或要切到某个 tag 时，在提示处输入新地址/标签即可。脚本会覆盖除 `config.lua` 外的所有脚本，`config.lua` 和基因数据 `data.txt` 不受影响。升级完成后重新运行 `bee.lua`。
 
 > 切换 GTNH 版本（如 beta1 升 beta2）时，重新跑对应分支的 installer 即可。
