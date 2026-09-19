@@ -20,6 +20,7 @@ local scripts = {
     "mutations.lua",
     "device.lua",
     "apiary.lua",
+    "upgrade.lua",
     "lib/inflate-bwo.lua",
     "lib/nbt.lua",
     "lib/zzlib.lua"
