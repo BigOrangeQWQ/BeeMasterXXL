@@ -1001,7 +1001,10 @@ end
 
 function M.task(species)--制定突变链
     --检查目标是否已存在
-    if beeData.initialized and beeData.getDroneTag(species) then
+    if beeData.getDroneTag(species) then
+        if not beeData.initialized then
+            M.initialize()
+        end
         print("目标品种已存在，正在优化基因...")
         local droneSlot, princessSlot = M.optimizeSpecies(species)
         robot.select(droneSlot)
@@ -1014,23 +1017,6 @@ function M.task(species)--制定突变链
     end
     --计算突变路径
     print("计算突变路径")
-    do
-        local targetTag = beeData.getDroneTag(species)
-        if targetTag then
-            local targetSlot = bot.checkItem({name="Forestry:beeDroneGE",tag=targetTag}, 1)
-            if targetSlot then
-                local previousLabel = bot.inventoryLabel
-                bot.inventoryLabel = "newSpecies:"..species
-                local optimizedDroneSlot, optimizedPrincessSlot = M.purify(nil, targetSlot, nil, nil, ":newSpecies")
-                bot.inventoryLabel = previousLabel
-                if optimizedDroneSlot and optimizedPrincessSlot then
-                    return optimizedDroneSlot, optimizedPrincessSlot
-                else
-                    error(string.format("优化%s蜂过程中发生基因丢失", species))
-                end
-            end
-        end
-    end
     local mutationChain, lackSpecies = {}, {}
     if not beeData.initialized then
         if not beeData.getDroneTag("forestry.speciesWintry") then
